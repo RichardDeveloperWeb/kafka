@@ -38,6 +38,12 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'name' => config('app.name'),
+            'site' => [
+                'name' => 'Los Cuentos de Kafka',
+                'legalName' => 'Los Cuentos de Kafka, S. de R.L. de C.V.',
+                'tagline' => 'Lecturas que te transforman',
+                'address' => 'Calle Oriente 4, frente al parque principal del centro, Orizaba, Veracruz.',
+            ],
             'auth' => [
                 'user' => $request->user(),
             ],
