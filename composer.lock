@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "8fc6385f5cbdcfae7bb1300fd0f71b48",
+    "content-hash": "423c6e7b2b68642ce118f1ff4eefe4c2",
     "packages": [
         {
             "name": "archtechx/enums",
@@ -6031,8 +6031,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-09-28T07:16:50+00:00",
-            "published-time": "2026-09-28T07:17:01+00:00"
+            "time": "2026-09-28T07:16:50+00:00"
         },
         {
             "name": "spatie/laravel-permission",
@@ -6120,8 +6119,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-11-06T11:43:27+00:00",
-            "published-time": "2026-11-06T11:43:46+00:00"
+            "time": "2026-11-06T11:43:27+00:00"
         },
         {
             "name": "spomky-labs/cbor-php",
@@ -13591,8 +13589,8 @@
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
-        "php": "^8.3"
+        "php": "^8.4.1"
     },
     "platform-dev": {},
-    "plugin-api-version": "2.11.0"
+    "plugin-api-version": "2.6.0"
 }
