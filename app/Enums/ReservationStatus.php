@@ -4,18 +4,18 @@ namespace App\Enums;
 
 enum ReservationStatus: string
 {
-    case Active = 'activa';
-    case Used = 'consumida';
-    case Expired = 'expirada';
-    case Cancelled = 'cancelada';
+    case Deposited = 'depositado';
+    case Charged = 'cobrado';
+    case Cancelled = 'cancelado';
+    case Refunded = 'reembolsado';
 
     public function label(): string
     {
         return match ($this) {
-            self::Active => 'Activa',
-            self::Used => 'Consumida',
-            self::Expired => 'Expirada',
-            self::Cancelled => 'Cancelada',
+            self::Deposited => 'Depositado',
+            self::Charged => 'Cobrado',
+            self::Cancelled => 'Cancelado',
+            self::Refunded => 'Reembolsado',
         };
     }
 }

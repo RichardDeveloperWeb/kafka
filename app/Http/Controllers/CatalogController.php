@@ -4,9 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Enums\ProductFormat;
 use App\Http\Requests\CatalogIndexRequest;
+use App\Models\Address;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\User;
 use App\Support\CatalogView;
+use App\Support\ClientView;
+use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -60,11 +64,21 @@ class CatalogController extends Controller
         ]);
     }
 
-    public function show(Product $product): Response
+    public function show(Request $request, Product $product): Response
     {
         abort_unless($product->is_active, 404);
 
         $product->load('category');
+
+        $user = $request->user();
+        $addresses = $user instanceof User
+            ? $user->addresses()
+                ->orderByDesc('is_default')
+                ->orderBy('label')
+                ->get()
+                ->map(fn (Address $address): array => ClientView::address($address))
+                ->all()
+            : [];
 
         $relatedProducts = Product::query()
             ->active()
@@ -79,6 +93,7 @@ class CatalogController extends Controller
 
         return Inertia::render('catalog/Show', [
             'product' => CatalogView::product($product),
+            'addresses' => $addresses,
             'relatedProducts' => $relatedProducts,
         ]);
     }

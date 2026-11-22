@@ -36,12 +36,14 @@ return new class extends Migration
             $table->decimal('price', 10, 2);
             $table->unsignedInteger('stock')->default(0);
             $table->string('availability', 20)->default('en_existencia');
+            $table->decimal('deposit_amount', 10, 2)->nullable();
+            $table->timestamp('releases_at')->nullable();
             $table->string('cover_path')->nullable();
             $table->boolean('is_active')->default(true);
             $table->timestamps();
 
             $table->index(['category_id', 'is_active']);
-            $table->index(['availability', 'is_active']);
+            $table->index(['availability', 'is_active', 'releases_at']);
         });
 
         Schema::create('cart_items', function (Blueprint $table) {
@@ -52,20 +54,6 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(['user_id', 'product_id']);
-        });
-
-        Schema::create('reservations', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('product_id')->constrained()->cascadeOnDelete();
-            $table->unsignedInteger('quantity');
-            $table->string('status', 20)->default('activa');
-            $table->timestamp('expires_at');
-            $table->timestamp('released_at')->nullable();
-            $table->timestamp('used_at')->nullable();
-            $table->timestamps();
-
-            $table->index(['status', 'expires_at']);
         });
 
         Schema::create('addresses', function (Blueprint $table) {
@@ -96,6 +84,8 @@ return new class extends Migration
             $table->decimal('subtotal', 10, 2);
             $table->decimal('shipping_total', 10, 2)->default(0);
             $table->decimal('total', 10, 2);
+            $table->decimal('deposit_amount', 10, 2)->default(0);
+            $table->decimal('balance_amount', 10, 2)->default(0);
             $table->jsonb('shipping_address');
             $table->timestamp('placed_at');
             $table->timestamps();
@@ -115,6 +105,38 @@ return new class extends Migration
             $table->decimal('unit_price', 10, 2);
             $table->decimal('line_total', 10, 2);
             $table->timestamps();
+        });
+
+        Schema::create('reservations', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('product_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('order_id')->nullable()->constrained()->nullOnDelete();
+            $table->unsignedInteger('quantity');
+            $table->string('status', 20)->default('depositado');
+            $table->decimal('deposit_amount', 10, 2);
+            $table->decimal('balance_amount', 10, 2);
+            $table->timestamp('releases_at');
+            $table->jsonb('shipping_address');
+            $table->timestamp('charged_at')->nullable();
+            $table->timestamp('refunded_at')->nullable();
+            $table->timestamps();
+
+            $table->index(['status', 'releases_at']);
+            $table->index(['user_id', 'status']);
+        });
+
+        Schema::create('payment_transactions', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('reservation_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('order_id')->nullable()->constrained()->nullOnDelete();
+            $table->string('type', 20);
+            $table->decimal('amount', 10, 2);
+            $table->timestamp('processed_at');
+            $table->timestamps();
+
+            $table->unique(['reservation_id', 'type']);
+            $table->index(['order_id', 'type']);
         });
 
         Schema::create('contact_messages', function (Blueprint $table) {
@@ -139,10 +161,11 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('contact_messages');
+        Schema::dropIfExists('payment_transactions');
+        Schema::dropIfExists('reservations');
         Schema::dropIfExists('order_items');
         Schema::dropIfExists('orders');
         Schema::dropIfExists('addresses');
-        Schema::dropIfExists('reservations');
         Schema::dropIfExists('cart_items');
         Schema::dropIfExists('products');
         Schema::dropIfExists('categories');

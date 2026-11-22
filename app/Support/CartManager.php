@@ -6,11 +6,18 @@ use App\Models\CartItem;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Validation\ValidationException;
 
 final class CartManager
 {
     public function add(User $user, Product $product, int $quantity): CartItem
     {
+        if ($product->isPreorder()) {
+            throw ValidationException::withMessages([
+                'product' => 'Este producto es de preventa; debes apartarlo con un depósito.',
+            ]);
+        }
+
         $item = CartItem::query()->firstOrNew([
             'user_id' => $user->id,
             'product_id' => $product->id,

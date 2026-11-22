@@ -19,6 +19,17 @@ test('catalog seeder creates categories and products', function () {
         ->and($product->availability)->toBe(ProductAvailability::InStock);
 });
 
+test('catalog seeder marks one product as a preorder', function () {
+    $this->seed(CatalogSeeder::class);
+
+    $preorder = Product::query()->where('slug', 'el-aleph')->firstOrFail();
+
+    expect($preorder->availability)->toBe(ProductAvailability::OnDemand)
+        ->and((float) $preorder->deposit_amount)->toBe(100.0)
+        ->and($preorder->releases_at)->not->toBeNull()
+        ->and($preorder->isPreorder())->toBeTrue();
+});
+
 test('catalog seeder is idempotent', function () {
     $this->seed(CatalogSeeder::class);
     $this->seed(CatalogSeeder::class);

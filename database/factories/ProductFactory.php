@@ -33,6 +33,8 @@ class ProductFactory extends Factory
             'price' => fake()->randomFloat(2, 80, 1200),
             'stock' => fake()->numberBetween(1, 25),
             'availability' => ProductAvailability::InStock,
+            'deposit_amount' => null,
+            'releases_at' => null,
             'cover_path' => null,
             'is_active' => true,
         ];
@@ -66,6 +68,15 @@ class ProductFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'availability' => ProductAvailability::OnDemand,
+        ]);
+    }
+
+    public function preorder(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'availability' => ProductAvailability::OnDemand,
+            'deposit_amount' => 20,
+            'releases_at' => now()->addDays(14),
         ]);
     }
 

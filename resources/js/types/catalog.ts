@@ -23,6 +23,10 @@ export type CatalogProduct = {
     availability: string | null;
     availabilityLabel: string | null;
     isAvailable: boolean;
+    isPreorder: boolean;
+    depositAmount: number | null;
+    depositMinimum: number | null;
+    releasesAt: string | null;
     coverPath: string | null;
     category: CatalogCategory | null;
 };

@@ -60,6 +60,8 @@ test('catalog shows a product and related products', function () {
             ->component('catalog/Show')
             ->where('product.slug', 'cien-anos-de-soledad')
             ->where('product.price', 499)
+            ->where('product.isPreorder', false)
+            ->has('addresses', 0)
             ->has('relatedProducts', 1)
             ->etc());
 });

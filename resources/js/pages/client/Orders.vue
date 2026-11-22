@@ -85,9 +85,20 @@ defineProps<{
                             </p>
                         </div>
                         <div class="flex items-center gap-4">
-                            <span class="font-semibold tabular-nums">
-                                {{ formatPrice(order.total) }}
-                            </span>
+                            <div class="text-right">
+                                <span class="font-semibold tabular-nums">
+                                    {{ formatPrice(order.total) }}
+                                </span>
+                                <p
+                                    v-if="order.depositAmount > 0"
+                                    class="text-xs text-muted-foreground"
+                                >
+                                    Depósito
+                                    {{ formatPrice(order.depositAmount) }} ·
+                                    Restante
+                                    {{ formatPrice(order.balanceAmount) }}
+                                </p>
+                            </div>
                             <Button as-child size="sm" variant="outline">
                                 <Link :href="orderShow(order.id)"
                                     >Ver detalle</Link

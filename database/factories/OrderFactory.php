@@ -23,6 +23,8 @@ class OrderFactory extends Factory
             'subtotal' => $subtotal,
             'shipping_total' => $shippingTotal,
             'total' => $subtotal + $shippingTotal,
+            'deposit_amount' => 0,
+            'balance_amount' => 0,
             'shipping_address' => [
                 'recipient_name' => fake()->name(),
                 'street' => fake()->streetAddress(),

@@ -18,26 +18,37 @@ class ReservationFactory extends Factory
         return [
             'user_id' => User::factory(),
             'product_id' => Product::factory(),
+            'order_id' => null,
             'quantity' => 1,
-            'status' => ReservationStatus::Active,
-            'expires_at' => now()->addMinutes(15),
-            'released_at' => null,
-            'used_at' => null,
+            'status' => ReservationStatus::Deposited,
+            'deposit_amount' => 20,
+            'balance_amount' => 80,
+            'releases_at' => now()->addDays(14),
+            'shipping_address' => [
+                'recipient_name' => fake()->name(),
+                'street' => fake()->streetAddress(),
+                'city' => 'Orizaba',
+                'state' => 'Veracruz',
+                'postal_code' => fake()->numerify('94###'),
+                'country' => 'MX',
+            ],
+            'charged_at' => null,
+            'refunded_at' => null,
         ];
     }
 
-    public function expired(): static
+    public function due(): static
     {
         return $this->state(fn (array $attributes) => [
-            'expires_at' => now()->subMinute(),
+            'releases_at' => now()->subDay(),
         ]);
     }
 
-    public function used(): static
+    public function charged(): static
     {
         return $this->state(fn (array $attributes) => [
-            'status' => ReservationStatus::Used,
-            'used_at' => now(),
+            'status' => ReservationStatus::Charged,
+            'charged_at' => now(),
         ]);
     }
 
@@ -45,7 +56,14 @@ class ReservationFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'status' => ReservationStatus::Cancelled,
-            'released_at' => now(),
+        ]);
+    }
+
+    public function refunded(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => ReservationStatus::Refunded,
+            'refunded_at' => now(),
         ]);
     }
 }

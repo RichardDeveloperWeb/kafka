@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
-import { Clock, Ticket } from '@lucide/vue';
+import { CalendarDays, Ticket } from '@lucide/vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,6 +8,7 @@ import {
     index as catalogIndex,
     show as catalogShow,
 } from '@/actions/App/Http/Controllers/CatalogController';
+import { show as orderShow } from '@/actions/App/Http/Controllers/OrderController';
 import { destroy as reservationDestroy } from '@/actions/App/Http/Controllers/ReservationController';
 import { dashboard } from '@/routes';
 import { formatPrice } from '@/lib/formatPrice';
@@ -17,41 +18,49 @@ defineOptions({
     layout: {
         breadcrumbs: [
             { title: 'Mi cuenta', href: dashboard() },
-            { title: 'Apartados', href: '/apartados' },
+            { title: 'Preventas', href: '/apartados' },
         ],
     },
 });
 
 defineProps<{
     reservations: ReservationData[];
-    holdMinutes: number;
 }>();
 
 const cancel = (id: number): void => {
     router.delete(reservationDestroy(id).url, { preserveScroll: true });
 };
+
+const formatDate = (value: string | null): string =>
+    value
+        ? new Date(value).toLocaleString('es-MX', {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+          })
+        : '—';
 </script>
 
 <template>
     <div>
-        <Head title="Mis apartados" />
+        <Head title="Mis preventas" />
 
         <div class="flex flex-1 flex-col gap-6 p-4">
             <section>
                 <p
                     class="text-xs font-semibold tracking-[0.18em] text-amber-700 uppercase dark:text-amber-400"
                 >
-                    Reservas temporales
+                    Reservas con depósito
                 </p>
                 <h1 class="mt-2 font-serif text-3xl font-semibold">
-                    Mis apartados
+                    Mis preventas
                 </h1>
                 <p
                     class="mt-2 flex items-center gap-2 text-sm text-muted-foreground"
                 >
-                    <Clock class="size-4" />
-                    Cada apartado dura {{ holdMinutes }} minutos. Si vence, el
-                    producto vuelve a estar disponible.
+                    <CalendarDays class="size-4" />
+                    El faltante se cobra automáticamente en la fecha de salida.
+                    Puedes cancelar antes de esa fecha y recuperar tu depósito.
                 </p>
             </section>
 
@@ -61,11 +70,11 @@ const cancel = (id: number): void => {
             >
                 <Ticket class="size-10 text-muted-foreground/60" />
                 <h2 class="mt-4 font-serif text-xl font-semibold">
-                    No tienes apartados
+                    No tienes preventas
                 </h2>
                 <p class="mt-2 max-w-sm text-sm text-muted-foreground">
-                    Desde la página de un producto puedes reservarlo por unos
-                    minutos antes de pagar.
+                    Apartalos con un depósito desde la página de un producto y
+                    recíbelos cuando se lancen.
                 </p>
                 <Button as-child class="mt-6">
                     <Link :href="catalogIndex()">Explorar catálogo</Link>
@@ -90,7 +99,10 @@ const cancel = (id: number): void => {
                         </div>
                         <Badge
                             :variant="
-                                reservation.isActive ? 'secondary' : 'outline'
+                                reservation.isCancellable ||
+                                reservation.status === 'depositado'
+                                    ? 'secondary'
+                                    : 'outline'
                             "
                         >
                             {{ reservation.statusLabel }}
@@ -104,26 +116,26 @@ const cancel = (id: number): void => {
                             }}</span>
                         </div>
                         <div class="flex justify-between text-sm">
-                            <span class="text-muted-foreground"
-                                >Precio unitario</span
-                            >
-                            <span class="tabular-nums">
-                                {{ formatPrice(reservation.product.price) }}
+                            <span class="text-muted-foreground">Depósito</span>
+                            <span class="font-medium tabular-nums">
+                                {{ formatPrice(reservation.depositAmount) }}
                             </span>
                         </div>
                         <div class="flex justify-between text-sm">
-                            <span class="text-muted-foreground">Vence</span>
+                            <span class="text-muted-foreground"
+                                >Restante estimado</span
+                            >
                             <span class="tabular-nums">
-                                {{
-                                    reservation.expiresAt
-                                        ? new Date(
-                                              reservation.expiresAt,
-                                          ).toLocaleString('es-MX')
-                                        : '—'
-                                }}
+                                {{ formatPrice(reservation.balanceAmount) }}
                             </span>
                         </div>
-                        <div class="flex gap-2 pt-2">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-muted-foreground">Salida</span>
+                            <span class="tabular-nums">
+                                {{ formatDate(reservation.releasesAt) }}
+                            </span>
+                        </div>
+                        <div class="flex flex-wrap gap-2 pt-2">
                             <Button
                                 as-child
                                 variant="outline"
@@ -139,7 +151,18 @@ const cancel = (id: number): void => {
                                 </Link>
                             </Button>
                             <Button
-                                v-if="reservation.isActive"
+                                v-if="reservation.orderId"
+                                as-child
+                                size="sm"
+                                variant="secondary"
+                                class="flex-1"
+                            >
+                                <Link :href="orderShow(reservation.orderId)">
+                                    Ver pedido
+                                </Link>
+                            </Button>
+                            <Button
+                                v-if="reservation.isCancellable"
                                 type="button"
                                 size="sm"
                                 variant="ghost"

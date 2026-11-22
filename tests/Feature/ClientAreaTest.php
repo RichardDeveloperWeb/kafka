@@ -1,12 +1,16 @@
 <?php
 
+use App\Enums\OrderStatus;
+use App\Enums\PaymentTransactionType;
 use App\Enums\ReservationStatus;
 use App\Models\Address;
 use App\Models\CartItem;
 use App\Models\Order;
+use App\Models\PaymentTransaction;
 use App\Models\Product;
 use App\Models\Reservation;
 use App\Models\User;
+use App\Support\ReservationManager;
 use Database\Seeders\RolePermissionSeeder;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -72,9 +76,10 @@ test('client can add update view and remove cart items', function () {
     expect($this->client->cartItems()->count())->toBe(0);
 });
 
-test('cart rejects unavailable products and invalid quantities', function () {
+test('cart rejects unavailable products preorders and invalid quantities', function () {
     $product = Product::factory()->create(['stock' => 2]);
     $outOfStock = Product::factory()->outOfStock()->create();
+    $preorder = Product::factory()->preorder()->create(['price' => 100]);
 
     $this->actingAs($this->client)
         ->post(route('cart.items.store', $product), ['quantity' => 0])
@@ -85,48 +90,126 @@ test('cart rejects unavailable products and invalid quantities', function () {
 
     $this->post(route('cart.items.store', $outOfStock), ['quantity' => 1])
         ->assertSessionHasErrors('product');
+
+    $this->post(route('cart.items.store', $preorder), ['quantity' => 1])
+        ->assertSessionHasErrors('product');
 });
 
-test('client can reserve a product and cancel the reservation', function () {
-    $product = Product::factory()->create(['stock' => 4]);
+test('client can reserve a preorder with a deposit and cancel it for a refund', function () {
+    $product = Product::factory()->preorder()->create([
+        'price' => 100,
+        'stock' => 4,
+    ]);
+    $address = Address::factory()->for($this->client)->default()->create();
+
+    Reservation::factory()
+        ->for($this->client)
+        ->for($product)
+        ->due()
+        ->create(['created_at' => now()->subDay()]);
 
     $this->actingAs($this->client)
-        ->post(route('cart.items.store', $product), ['quantity' => 1]);
+        ->post(route('cart.items.store', $product), ['quantity' => 1])
+        ->assertSessionHasErrors('product');
 
-    $this->post(route('reservations.store', $product), ['quantity' => 2])
-        ->assertRedirect(route('reservations.index'));
+    $this->post(route('reservations.store', $product), [
+        'quantity' => 2,
+        'deposit_amount' => 40,
+        'address_id' => $address->id,
+    ])->assertRedirect(route('reservations.index'));
 
-    $reservation = $this->client->reservations()->firstOrFail();
+    $reservation = $this->client->reservations()
+        ->where('status', ReservationStatus::Deposited)
+        ->where('releases_at', '>', now())
+        ->firstOrFail();
 
-    expect($reservation->status)->toBe(ReservationStatus::Active)
+    expect($reservation->status)->toBe(ReservationStatus::Deposited)
+        ->and((float) $reservation->deposit_amount)->toBe(40.0)
+        ->and((float) $reservation->balance_amount)->toBe(160.0)
         ->and($this->client->cartItems()->count())->toBe(0);
 
     $this->get(route('reservations.index'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('client/Reservations')
-            ->where('holdMinutes', 15)
-            ->where('reservations.0.status', 'activa')
-            ->where('reservations.0.isActive', true)
-            ->etc());
-
-    Reservation::factory()
-        ->for($this->client)
-        ->for($product)
-        ->expired()
-        ->create();
-
-    $this->get(route('reservations.index'))
-        ->assertInertia(fn (Assert $page) => $page
-            ->has('reservations', 2)
-            ->where('reservations.1.status', 'expirada')
-            ->where('reservations.1.isActive', false)
+            ->where('reservations.0.status', 'depositado')
+            ->where('reservations.0.depositAmount', 40)
+            ->where('reservations.0.isCancellable', true)
+            ->where('reservations.1.isCancellable', false)
             ->etc());
 
     $this->delete(route('reservations.destroy', $reservation))
         ->assertRedirect(route('reservations.index'));
 
-    expect($reservation->refresh()->status)->toBe(ReservationStatus::Cancelled);
+    expect($reservation->refresh()->status)->toBe(ReservationStatus::Refunded)
+        ->and($reservation->refunded_at)->not->toBeNull()
+        ->and(PaymentTransaction::query()
+            ->where('reservation_id', $reservation->id)
+            ->where('type', PaymentTransactionType::Refund)
+            ->count())->toBe(1);
+});
+
+test('preorder reservation validates deposit limits and address ownership', function () {
+    $product = Product::factory()->preorder()->create(['price' => 100]);
+
+    $this->actingAs($this->client)
+        ->post(route('reservations.store', $product), [
+            'quantity' => 2,
+            'deposit_amount' => 30,
+            'address_id' => Address::factory()->for($this->client)->create()->id,
+        ])
+        ->assertSessionHasErrors('deposit_amount');
+
+    $this->post(route('reservations.store', $product), [
+        'quantity' => 2,
+        'deposit_amount' => 201,
+        'address_id' => Address::factory()->for($this->client)->create()->id,
+    ])->assertSessionHasErrors('deposit_amount');
+
+    $this->post(route('reservations.store', $product), [
+        'quantity' => 1,
+        'deposit_amount' => 20,
+        'address_id' => Address::factory()->create()->id,
+    ])->assertSessionHasErrors('address_id');
+});
+
+test('scheduler charges due preorder balances once and creates a ready to ship order', function () {
+    $product = Product::factory()->preorder()->create([
+        'price' => 100,
+        'stock' => 5,
+    ]);
+
+    $reservation = Reservation::factory()
+        ->for($this->client)
+        ->for($product)
+        ->due()
+        ->create([
+            'quantity' => 2,
+            'deposit_amount' => 50,
+            'balance_amount' => 150,
+        ]);
+
+    $manager = app(ReservationManager::class);
+
+    expect($manager->chargeDue())->toBe(1)
+        ->and($manager->chargeDue())->toBe(0);
+
+    $order = $this->client->orders()->firstOrFail();
+
+    expect($order->status)->toBe(OrderStatus::ReadyToShip)
+        ->and((float) $order->subtotal)->toBe(200.0)
+        ->and((float) $order->shipping_total)->toBe(80.0)
+        ->and((float) $order->total)->toBe(280.0)
+        ->and((float) $order->deposit_amount)->toBe(50.0)
+        ->and((float) $order->balance_amount)->toBe(230.0)
+        ->and($order->items()->count())->toBe(1)
+        ->and($reservation->refresh()->status)->toBe(ReservationStatus::Charged)
+        ->and($reservation->order_id)->toBe($order->id)
+        ->and($product->refresh()->stock)->toBe(3)
+        ->and(PaymentTransaction::query()
+            ->where('reservation_id', $reservation->id)
+            ->where('type', PaymentTransactionType::Balance)
+            ->count())->toBe(1);
 });
 
 test('client can manage addresses with a single default', function () {
@@ -182,7 +265,7 @@ test('client can manage addresses with a single default', function () {
     expect($this->client->addresses()->count())->toBe(1);
 });
 
-test('checkout creates an order snapshot clears the cart and consumes reservations', function () {
+test('checkout creates an order snapshot and clears the cart', function () {
     $product = Product::factory()->create([
         'price' => 100,
         'stock' => 5,
@@ -190,11 +273,6 @@ test('checkout creates an order snapshot clears the cart and consumes reservatio
 
     $this->actingAs($this->client)
         ->post(route('cart.items.store', $product), ['quantity' => 2]);
-
-    $reservation = Reservation::factory()
-        ->for($this->client)
-        ->for($product)
-        ->create(['quantity' => 1]);
 
     $address = Address::factory()->for($this->client)->default()->create();
 
@@ -210,7 +288,6 @@ test('checkout creates an order snapshot clears the cart and consumes reservatio
         ->and($order->shipping_address['city'])->toBe('Orizaba')
         ->and($order->items()->count())->toBe(1)
         ->and($this->client->cartItems()->count())->toBe(0)
-        ->and($reservation->refresh()->status)->toBe(ReservationStatus::Used)
         ->and($product->refresh()->stock)->toBe(3);
 });
 

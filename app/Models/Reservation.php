@@ -10,15 +10,20 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'user_id',
     'product_id',
+    'order_id',
     'quantity',
     'status',
-    'expires_at',
-    'released_at',
-    'used_at',
+    'deposit_amount',
+    'balance_amount',
+    'releases_at',
+    'shipping_address',
+    'charged_at',
+    'refunded_at',
 ])]
 class Reservation extends Model
 {
@@ -30,9 +35,12 @@ class Reservation extends Model
         return [
             'quantity' => 'integer',
             'status' => ReservationStatus::class,
-            'expires_at' => 'datetime',
-            'released_at' => 'datetime',
-            'used_at' => 'datetime',
+            'deposit_amount' => 'decimal:2',
+            'balance_amount' => 'decimal:2',
+            'releases_at' => 'datetime',
+            'shipping_address' => 'array',
+            'charged_at' => 'datetime',
+            'refunded_at' => 'datetime',
         ];
     }
 
@@ -48,16 +56,16 @@ class Reservation extends Model
         return $this->belongsTo(Product::class);
     }
 
-    /**
-     * @param  Builder<Reservation>  $query
-     * @return Builder<Reservation>
-     */
-    #[Scope]
-    protected function active(Builder $query): Builder
+    /** @return BelongsTo<Order, $this> */
+    public function order(): BelongsTo
     {
-        return $query
-            ->where('status', ReservationStatus::Active)
-            ->where('expires_at', '>', now());
+        return $this->belongsTo(Order::class);
+    }
+
+    /** @return HasMany<PaymentTransaction, $this> */
+    public function paymentTransactions(): HasMany
+    {
+        return $this->hasMany(PaymentTransaction::class);
     }
 
     /**
@@ -65,10 +73,22 @@ class Reservation extends Model
      * @return Builder<Reservation>
      */
     #[Scope]
-    protected function expired(Builder $query): Builder
+    protected function pendingRelease(Builder $query): Builder
     {
         return $query
-            ->where('status', ReservationStatus::Active)
-            ->where('expires_at', '<=', now());
+            ->where('status', ReservationStatus::Deposited)
+            ->where('releases_at', '>', now());
+    }
+
+    /**
+     * @param  Builder<Reservation>  $query
+     * @return Builder<Reservation>
+     */
+    #[Scope]
+    protected function chargeable(Builder $query): Builder
+    {
+        return $query
+            ->where('status', ReservationStatus::Deposited)
+            ->where('releases_at', '<=', now());
     }
 }

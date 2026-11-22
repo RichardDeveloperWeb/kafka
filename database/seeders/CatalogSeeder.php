@@ -58,6 +58,9 @@ class CatalogSeeder extends Seeder
                 'format' => ProductFormat::Printed,
                 'price' => 389,
                 'stock' => 8,
+                'availability' => ProductAvailability::OnDemand,
+                'deposit_amount' => 100,
+                'releases_at' => now()->addDays(21),
                 'synopsis' => 'Cuentos que exploran el tiempo, el infinito y los laberintos de la imaginación.',
             ],
             [
@@ -172,9 +175,11 @@ class CatalogSeeder extends Seeder
                 'synopsis' => $product['synopsis'],
                 'price' => $product['price'],
                 'stock' => $product['stock'],
-                'availability' => $product['stock'] > 0
+                'availability' => $product['availability'] ?? ($product['stock'] > 0
                     ? ProductAvailability::InStock
-                    : ProductAvailability::OutOfStock,
+                    : ProductAvailability::OutOfStock),
+                'deposit_amount' => $product['deposit_amount'] ?? null,
+                'releases_at' => $product['releases_at'] ?? null,
                 'cover_path' => null,
                 'is_active' => true,
             ]);

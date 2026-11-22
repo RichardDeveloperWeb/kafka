@@ -63,9 +63,14 @@ const initials = props.product.title
                     }}
                 </p>
                 <div class="flex items-center justify-between pt-3">
-                    <span class="font-semibold tabular-nums">{{
-                        formatPrice(product.price)
-                    }}</span>
+                    <span class="font-semibold tabular-nums">
+                        {{
+                            product.isPreorder &&
+                            product.depositMinimum !== null
+                                ? `Desde ${formatPrice(product.depositMinimum)}`
+                                : formatPrice(product.price)
+                        }}
+                    </span>
                     <span
                         class="flex size-8 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors group-hover:border-foreground group-hover:text-foreground"
                     >

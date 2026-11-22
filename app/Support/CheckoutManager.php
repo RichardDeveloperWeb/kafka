@@ -18,7 +18,6 @@ final class CheckoutManager
 {
     public function __construct(
         private readonly CartManager $cartManager,
-        private readonly ReservationManager $reservationManager,
     ) {}
 
     public function checkout(User $user, Address $address): Order
@@ -46,6 +45,12 @@ final class CheckoutManager
                 if (! $product->is_active || $availability === ProductAvailability::OutOfStock) {
                     throw ValidationException::withMessages([
                         'cart' => 'Uno de los productos de tu carrito ya no está disponible.',
+                    ]);
+                }
+
+                if ($product->isPreorder()) {
+                    throw ValidationException::withMessages([
+                        'cart' => 'Los productos de preventa deben apartarse con un depósito.',
                     ]);
                 }
 
@@ -97,8 +102,6 @@ final class CheckoutManager
                     $product->decrement('stock', $item->quantity);
                 }
             }
-
-            $this->reservationManager->consume($user, $items);
 
             CartItem::query()->where('user_id', $user->id)->delete();
 

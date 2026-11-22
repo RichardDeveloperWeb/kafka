@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ReservationStatus;
 use App\Models\Order;
 use App\Models\User;
 use App\Support\ClientView;
@@ -20,7 +21,9 @@ class DashboardController extends Controller
                 'cartCount' => (int) $user->cartItems()->sum('quantity'),
                 'addresses' => $user->addresses()->count(),
                 'orders' => $user->orders()->count(),
-                'reservations' => $user->reservations()->active()->count(),
+                'reservations' => $user->reservations()
+                    ->where('status', ReservationStatus::Deposited)
+                    ->count(),
             ],
             'recentOrders' => $user->orders()
                 ->with('items')

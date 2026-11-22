@@ -32,6 +32,12 @@ class StoreCartItemRequest extends FormRequest
             $availability = $product->getAttribute('availability');
             $quantity = (int) $this->input('quantity', 1);
 
+            if ($product->isPreorder()) {
+                $validator->errors()->add('product', 'Este producto es de preventa; debes apartarlo con un depósito.');
+
+                return;
+            }
+
             if (! $product->is_active || $availability === ProductAvailability::OutOfStock) {
                 $validator->errors()->add('product', 'Este producto no está disponible en este momento.');
 

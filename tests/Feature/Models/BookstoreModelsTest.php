@@ -3,7 +3,6 @@
 use App\Enums\AddressType;
 use App\Enums\OrderStatus;
 use App\Enums\ProductFormat;
-use App\Enums\ReservationStatus;
 use App\Models\Address;
 use App\Models\CartItem;
 use App\Models\Category;
@@ -39,16 +38,22 @@ test('order snapshots keep their items and status', function () {
         ->and($order->items->first()->product->is($product))->toBeTrue();
 });
 
-test('reservation scopes separate active and expired reservations', function () {
+test('preorder products and reservations expose their scopes', function () {
     $user = User::factory()->create();
-    $product = Product::factory()->create();
-    $active = Reservation::factory()->for($user)->for($product)->create();
-    $expired = Reservation::factory()->expired()->for($user)->for($product)->create();
+    $preorder = Product::factory()->preorder()->create();
+    $stocked = Product::factory()->create();
+    $deposited = Reservation::factory()->for($user)->for($preorder)->create();
+    $due = Reservation::factory()->for($user)->for($preorder)->due()->create();
+    $charged = Reservation::factory()->charged()->create();
 
-    expect($active->status)->toBe(ReservationStatus::Active)
-        ->and(Reservation::active()->pluck('id')->all())->toContain($active->id)
-        ->and(Reservation::active()->pluck('id')->all())->not->toContain($expired->id)
-        ->and(Reservation::expired()->pluck('id')->all())->toContain($expired->id);
+    expect($preorder->isPreorder())->toBeTrue()
+        ->and($stocked->isPreorder())->toBeFalse()
+        ->and(Product::preorder()->pluck('id')->all())->toContain($preorder->id)
+        ->and(Product::preorder()->pluck('id')->all())->not->toContain($stocked->id)
+        ->and(Reservation::pendingRelease()->pluck('id')->all())->toContain($deposited->id)
+        ->and(Reservation::pendingRelease()->pluck('id')->all())->not->toContain($due->id)
+        ->and(Reservation::chargeable()->pluck('id')->all())->toContain($due->id)
+        ->and(Reservation::chargeable()->pluck('id')->all())->not->toContain($charged->id);
 });
 
 test('address casts and default scope resolve through the database', function () {

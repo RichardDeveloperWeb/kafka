@@ -4,32 +4,80 @@ import {
     ArrowLeft,
     ArrowRight,
     BookOpen,
+    CalendarDays,
     Check,
     Lock,
     MapPin,
     ShoppingCart,
     Ticket,
 } from '@lucide/vue';
+import { computed, watch } from 'vue';
 import InputError from '@/components/InputError.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import ProductCard from '@/components/public/ProductCard.vue';
+import { create as addressCreate } from '@/actions/App/Http/Controllers/AddressController';
 import { store as cartStore } from '@/actions/App/Http/Controllers/CartController';
 import { index as catalogIndex } from '@/actions/App/Http/Controllers/CatalogController';
 import { store as reservationStore } from '@/actions/App/Http/Controllers/ReservationController';
 import { contact, login } from '@/routes';
 import { formatPrice } from '@/lib/formatPrice';
-import type { CatalogProduct } from '@/types';
+import type { AddressData, CatalogProduct } from '@/types';
 
 const props = defineProps<{
     product: CatalogProduct;
+    addresses: AddressData[];
     relatedProducts: CatalogProduct[];
 }>();
 
 const user = usePage().props.auth.user;
 const cartForm = useForm({ quantity: 1, product: '' });
-const reservationForm = useForm({ quantity: 1, product: '' });
+const reservationForm = useForm({
+    quantity: 1,
+    deposit_amount: props.product.depositMinimum ?? 0,
+    product: '',
+    address_id:
+        props.addresses.find((address) => address.isDefault)?.id ??
+        props.addresses[0]?.id ??
+        0,
+});
+
+const minimumDeposit = computed(
+    () =>
+        Math.round(
+            (props.product.depositMinimum ?? 0) *
+                reservationForm.quantity *
+                100,
+        ) / 100,
+);
+const maximumDeposit = computed(
+    () =>
+        Math.round(props.product.price * reservationForm.quantity * 100) / 100,
+);
+const releaseDate = computed(() =>
+    props.product.releasesAt
+        ? new Date(props.product.releasesAt).toLocaleDateString('es-MX', {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+          })
+        : null,
+);
+
+watch(
+    () => reservationForm.quantity,
+    (quantity) => {
+        if (quantity < 1) {
+            return;
+        }
+
+        reservationForm.deposit_amount = Math.min(
+            Math.max(reservationForm.deposit_amount, minimumDeposit.value),
+            maximumDeposit.value,
+        );
+    },
+);
 
 const addToCart = (): void => {
     cartForm.post(cartStore(props.product.slug).url, {
@@ -41,7 +89,10 @@ const addToCart = (): void => {
 const reserve = (): void => {
     reservationForm.post(reservationStore(props.product.slug).url, {
         preserveScroll: true,
-        onSuccess: () => reservationForm.reset(),
+        onSuccess: () => {
+            reservationForm.quantity = 1;
+            reservationForm.deposit_amount = props.product.depositMinimum ?? 0;
+        },
     });
 };
 
@@ -82,7 +133,13 @@ const metadata = (product: CatalogProduct) =>
                     ></div>
                     <BookOpen class="relative size-24 text-foreground/15" />
                     <Badge
-                        :variant="product.isAvailable ? 'secondary' : 'outline'"
+                        :variant="
+                            product.isPreorder
+                                ? 'default'
+                                : product.isAvailable
+                                  ? 'secondary'
+                                  : 'outline'
+                        "
                         class="absolute top-5 right-5 bg-background/90"
                     >
                         {{ product.availabilityLabel ?? 'Sin información' }}
@@ -116,12 +173,31 @@ const metadata = (product: CatalogProduct) =>
                             formatPrice(product.price)
                         }}</span>
                         <span
-                            v-if="product.isAvailable"
+                            v-if="product.isPreorder && releaseDate"
+                            class="flex items-center gap-1.5 text-sm text-muted-foreground"
+                        >
+                            <CalendarDays class="size-4" />
+                            Sale el {{ releaseDate }}
+                        </span>
+                        <span
+                            v-else-if="product.isAvailable"
                             class="flex items-center gap-1.5 text-sm text-muted-foreground"
                         >
                             <Check class="size-4 text-emerald-600" />
                             {{ product.stock }} disponibles
                         </span>
+                    </div>
+
+                    <div
+                        v-if="product.isPreorder"
+                        class="mt-6 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-sm leading-6 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200"
+                    >
+                        <p class="font-medium">Preventa con depósito</p>
+                        <p class="mt-1">
+                            Apartalo desde {{ formatPrice(minimumDeposit) }}. El
+                            resto se cobrará automáticamente en la fecha de
+                            salida y prepararemos tu envío.
+                        </p>
                     </div>
 
                     <p
@@ -132,53 +208,21 @@ const metadata = (product: CatalogProduct) =>
                     </p>
 
                     <div v-if="user" class="mt-8 space-y-4">
-                        <div
-                            v-if="product.isAvailable"
+                        <form
+                            v-if="product.isPreorder"
                             class="grid gap-4 rounded-2xl border border-border bg-card p-5 sm:grid-cols-2"
+                            @submit.prevent="reserve"
                         >
-                            <form class="space-y-3" @submit.prevent="addToCart">
+                            <div class="space-y-3">
                                 <div class="grid gap-2">
                                     <label
-                                        :for="`cart-quantity-${product.id}`"
+                                        :for="`preorder-quantity-${product.id}`"
                                         class="text-xs font-medium tracking-wide uppercase"
                                     >
                                         Cantidad
                                     </label>
                                     <Input
-                                        :id="`cart-quantity-${product.id}`"
-                                        v-model.number="cartForm.quantity"
-                                        type="number"
-                                        min="1"
-                                        :max="Math.max(product.stock, 1)"
-                                    />
-                                    <InputError
-                                        :message="cartForm.errors.quantity"
-                                    />
-                                    <InputError
-                                        :message="cartForm.errors.product"
-                                    />
-                                </div>
-                                <Button
-                                    type="submit"
-                                    size="lg"
-                                    class="w-full"
-                                    :disabled="cartForm.processing"
-                                >
-                                    <ShoppingCart class="size-4" />
-                                    Agregar al carrito
-                                </Button>
-                            </form>
-
-                            <form class="space-y-3" @submit.prevent="reserve">
-                                <div class="grid gap-2">
-                                    <label
-                                        :for="`reservation-quantity-${product.id}`"
-                                        class="text-xs font-medium tracking-wide uppercase"
-                                    >
-                                        Apartar 15 minutos
-                                    </label>
-                                    <Input
-                                        :id="`reservation-quantity-${product.id}`"
+                                        :id="`preorder-quantity-${product.id}`"
                                         v-model.number="
                                             reservationForm.quantity
                                         "
@@ -191,6 +235,71 @@ const metadata = (product: CatalogProduct) =>
                                             reservationForm.errors.quantity
                                         "
                                     />
+                                </div>
+                                <div class="grid gap-2">
+                                    <label
+                                        :for="`preorder-deposit-${product.id}`"
+                                        class="text-xs font-medium tracking-wide uppercase"
+                                    >
+                                        Depósito
+                                    </label>
+                                    <Input
+                                        :id="`preorder-deposit-${product.id}`"
+                                        v-model.number="
+                                            reservationForm.deposit_amount
+                                        "
+                                        type="number"
+                                        step="0.01"
+                                        :min="minimumDeposit"
+                                        :max="maximumDeposit"
+                                    />
+                                    <p class="text-xs text-muted-foreground">
+                                        Entre
+                                        {{ formatPrice(minimumDeposit) }} y
+                                        {{ formatPrice(maximumDeposit) }}
+                                    </p>
+                                    <InputError
+                                        :message="
+                                            reservationForm.errors
+                                                .deposit_amount
+                                        "
+                                    />
+                                </div>
+                            </div>
+
+                            <div class="space-y-3">
+                                <div class="grid gap-2">
+                                    <label
+                                        :for="`preorder-address-${product.id}`"
+                                        class="text-xs font-medium tracking-wide uppercase"
+                                    >
+                                        Dirección de envío
+                                    </label>
+                                    <select
+                                        :id="`preorder-address-${product.id}`"
+                                        v-model.number="
+                                            reservationForm.address_id
+                                        "
+                                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                    >
+                                        <option :value="0" disabled>
+                                            Selecciona una dirección
+                                        </option>
+                                        <option
+                                            v-for="address in addresses"
+                                            :key="address.id"
+                                            :value="address.id"
+                                        >
+                                            {{ address.label ?? address.city }}
+                                            ·
+                                            {{ address.recipientName }}
+                                        </option>
+                                    </select>
+                                    <InputError
+                                        :message="
+                                            reservationForm.errors.address_id
+                                        "
+                                    />
                                     <InputError
                                         :message="
                                             reservationForm.errors.product
@@ -200,15 +309,61 @@ const metadata = (product: CatalogProduct) =>
                                 <Button
                                     type="submit"
                                     size="lg"
-                                    variant="outline"
                                     class="w-full"
-                                    :disabled="reservationForm.processing"
+                                    :disabled="
+                                        reservationForm.processing ||
+                                        addresses.length === 0
+                                    "
                                 >
                                     <Ticket class="size-4" />
-                                    Apartar producto
+                                    Apartar preventa
                                 </Button>
-                            </form>
-                        </div>
+                                <Link
+                                    v-if="addresses.length === 0"
+                                    :href="addressCreate()"
+                                    class="block text-center text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
+                                >
+                                    Agrega una dirección para apartar
+                                </Link>
+                            </div>
+                        </form>
+
+                        <form
+                            v-else-if="product.isAvailable"
+                            class="grid gap-4 rounded-2xl border border-border bg-card p-5 sm:grid-cols-2"
+                            @submit.prevent="addToCart"
+                        >
+                            <div class="grid gap-2">
+                                <label
+                                    :for="`cart-quantity-${product.id}`"
+                                    class="text-xs font-medium tracking-wide uppercase"
+                                >
+                                    Cantidad
+                                </label>
+                                <Input
+                                    :id="`cart-quantity-${product.id}`"
+                                    v-model.number="cartForm.quantity"
+                                    type="number"
+                                    min="1"
+                                    :max="Math.max(product.stock, 1)"
+                                />
+                                <InputError
+                                    :message="cartForm.errors.quantity"
+                                />
+                                <InputError
+                                    :message="cartForm.errors.product"
+                                />
+                            </div>
+                            <Button
+                                type="submit"
+                                size="lg"
+                                class="w-full self-end"
+                                :disabled="cartForm.processing"
+                            >
+                                <ShoppingCart class="size-4" />
+                                Agregar al carrito
+                            </Button>
+                        </form>
 
                         <div class="flex flex-wrap gap-3">
                             <Button as-child size="lg" variant="secondary">
@@ -232,7 +387,7 @@ const metadata = (product: CatalogProduct) =>
                             <Lock class="size-5 text-muted-foreground" />
                             <p class="flex-1 text-sm text-muted-foreground">
                                 Inicia sesión para agregar productos al carrito,
-                                apartarlos o finalizar una compra.
+                                apartar preventas o finalizar una compra.
                             </p>
                             <div class="flex gap-2">
                                 <Button as-child>

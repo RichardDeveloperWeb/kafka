@@ -46,7 +46,7 @@ const mainNavItems: NavItem[] = [
         icon: ShoppingCart,
     },
     {
-        title: 'Apartados',
+        title: 'Preventas',
         href: reservationsIndex(),
         icon: Ticket,
     },

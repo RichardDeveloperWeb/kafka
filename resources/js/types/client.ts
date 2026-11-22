@@ -44,19 +44,24 @@ export interface AddressData {
 
 export interface ReservationData {
     id: number;
+    orderId: number | null;
     quantity: number;
     status: string | null;
     statusLabel: string | null;
-    expiresAt: string | null;
-    releasedAt: string | null;
-    usedAt: string | null;
-    isActive: boolean;
+    depositAmount: number;
+    balanceAmount: number;
+    releasesAt: string | null;
+    chargedAt: string | null;
+    refundedAt: string | null;
+    isCancellable: boolean;
+    shippingAddress: Record<string, string | null | undefined>;
     product: {
         id: number;
         slug: string;
         title: string;
         author: string | null;
         price: number;
+        depositAmount: number | null;
     };
 }
 
@@ -93,6 +98,8 @@ export interface OrderData {
     subtotal: number;
     shippingTotal: number;
     total: number;
+    depositAmount: number;
+    balanceAmount: number;
     shippingAddress: ShippingAddressSnapshot;
     placedAt: string | null;
     items: OrderItemData[];

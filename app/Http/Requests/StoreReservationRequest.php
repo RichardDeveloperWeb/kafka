@@ -2,12 +2,11 @@
 
 namespace App\Http\Requests;
 
-use App\Enums\ProductAvailability;
 use App\Models\Product;
-use App\Models\Reservation;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreReservationRequest extends FormRequest
 {
@@ -18,38 +17,47 @@ class StoreReservationRequest extends FormRequest
     {
         return [
             'quantity' => ['required', 'integer', 'min:1', 'max:99'],
+            'deposit_amount' => ['required', 'numeric', 'min:0'],
+            'address_id' => [
+                'required',
+                'integer',
+                Rule::exists('addresses', 'id')->where('user_id', $this->user()?->id),
+            ],
         ];
     }
 
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
+            if ($validator->errors()->isNotEmpty()) {
+                return;
+            }
+
             $product = $this->route('product');
 
             if (! $product instanceof Product) {
                 return;
             }
 
-            $availability = $product->getAttribute('availability');
+            if (! $product->isPreorder()) {
+                $validator->errors()->add('product', 'Este producto no está disponible para apartar.');
+
+                return;
+            }
+
             $quantity = (int) $this->input('quantity', 1);
+            $deposit = round((float) $this->input('deposit_amount', 0), 2);
+            $minimum = $product->minimumDepositFor($quantity);
+            $maximum = round((float) $product->price * $quantity, 2);
 
-            if (! $product->is_active || $availability === ProductAvailability::OutOfStock) {
-                $validator->errors()->add('product', 'Este producto no se puede apartar en este momento.');
+            if ($deposit < $minimum) {
+                $validator->errors()->add('deposit_amount', "El depósito mínimo es {$minimum}.");
 
                 return;
             }
 
-            if ($availability !== ProductAvailability::InStock) {
-                return;
-            }
-
-            $reserved = (int) Reservation::query()
-                ->active()
-                ->where('product_id', $product->id)
-                ->sum('quantity');
-
-            if ($reserved + $quantity > $product->stock) {
-                $validator->errors()->add('quantity', 'No hay suficientes ejemplares para apartar.');
+            if ($deposit > $maximum) {
+                $validator->errors()->add('deposit_amount', "El depósito no puede superar {$maximum}.");
             }
         });
     }
@@ -61,6 +69,8 @@ class StoreReservationRequest extends FormRequest
     {
         return [
             'quantity' => 'cantidad',
+            'deposit_amount' => 'depósito',
+            'address_id' => 'dirección de envío',
         ];
     }
 }

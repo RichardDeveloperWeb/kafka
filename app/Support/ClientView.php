@@ -47,24 +47,31 @@ final class ClientView
     public static function reservation(Reservation $reservation): array
     {
         $status = $reservation->getAttribute('status');
-        $expiresAt = $reservation->getAttribute('expires_at');
+        $releasesAt = $reservation->getAttribute('releases_at');
         $product = $reservation->product;
 
         return [
             'id' => $reservation->id,
+            'orderId' => $reservation->order_id,
             'quantity' => $reservation->quantity,
             'status' => $status instanceof ReservationStatus ? $status->value : null,
             'statusLabel' => $status instanceof ReservationStatus ? $status->label() : null,
-            'expiresAt' => self::dateString($expiresAt),
-            'releasedAt' => self::dateString($reservation->getAttribute('released_at')),
-            'usedAt' => self::dateString($reservation->getAttribute('used_at')),
-            'isActive' => $status === ReservationStatus::Active && self::isFuture($expiresAt),
+            'depositAmount' => (float) $reservation->deposit_amount,
+            'balanceAmount' => (float) $reservation->balance_amount,
+            'releasesAt' => self::dateString($releasesAt),
+            'chargedAt' => self::dateString($reservation->getAttribute('charged_at')),
+            'refundedAt' => self::dateString($reservation->getAttribute('refunded_at')),
+            'isCancellable' => $status === ReservationStatus::Deposited
+                && $releasesAt instanceof CarbonInterface
+                && $releasesAt->isFuture(),
+            'shippingAddress' => $reservation->shipping_address,
             'product' => [
                 'id' => $product->id,
                 'slug' => $product->slug,
                 'title' => $product->title,
                 'author' => $product->author,
                 'price' => (float) $product->price,
+                'depositAmount' => $product->deposit_amount === null ? null : (float) $product->deposit_amount,
             ],
         ];
     }
@@ -83,6 +90,8 @@ final class ClientView
             'subtotal' => (float) $order->subtotal,
             'shippingTotal' => (float) $order->shipping_total,
             'total' => (float) $order->total,
+            'depositAmount' => (float) $order->deposit_amount,
+            'balanceAmount' => (float) $order->balance_amount,
             'shippingAddress' => $order->shipping_address,
             'placedAt' => self::dateString($order->getAttribute('placed_at')),
             'items' => $order->relationLoaded('items')
@@ -122,18 +131,5 @@ final class ClientView
         }
 
         return null;
-    }
-
-    private static function isFuture(mixed $value): bool
-    {
-        if ($value instanceof CarbonInterface) {
-            return $value->isFuture();
-        }
-
-        if (is_string($value) && $value !== '') {
-            return Carbon::parse($value)->isFuture();
-        }
-
-        return false;
     }
 }

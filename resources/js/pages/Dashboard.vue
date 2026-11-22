@@ -50,8 +50,8 @@ const quickLinks = [
         icon: ShoppingCart,
     },
     {
-        title: 'Mis apartados',
-        description: 'Consulta tus reservas antes de que venzan.',
+        title: 'Mis preventas',
+        description: 'Consulta tus depósitos y fechas de salida.',
         href: reservationsIndex(),
         icon: Ticket,
     },
@@ -86,7 +86,7 @@ const quickLinks = [
                     </h1>
                     <p class="mt-3 text-sm leading-7 text-muted-foreground">
                         Desde aquí puedes seguir tus pedidos, administrar tus
-                        apartados y preparar tu próxima compra.
+                        preventas y preparar tu próxima compra.
                     </p>
                     <div class="mt-6 flex flex-wrap gap-3">
                         <Button as-child>
@@ -122,7 +122,7 @@ const quickLinks = [
                 <Card>
                     <CardHeader class="flex-row items-center justify-between">
                         <CardTitle class="text-sm font-medium"
-                            >Apartados</CardTitle
+                            >Preventas</CardTitle
                         >
                         <Ticket class="size-4 text-muted-foreground" />
                     </CardHeader>
@@ -131,7 +131,7 @@ const quickLinks = [
                             {{ overview.reservations }}
                         </p>
                         <p class="text-xs text-muted-foreground">
-                            reservas activas
+                            depósitos activos
                         </p>
                     </CardContent>
                 </Card>

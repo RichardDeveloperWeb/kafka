@@ -147,6 +147,25 @@ const addressParts = (address: ShippingAddressSnapshot): string =>
                                 }}</span>
                             </div>
                             <div
+                                v-if="props.order.depositAmount > 0"
+                                class="flex justify-between text-muted-foreground"
+                            >
+                                <span>Depósito de preventa</span>
+                                <span class="tabular-nums">
+                                    −
+                                    {{ formatPrice(props.order.depositAmount) }}
+                                </span>
+                            </div>
+                            <div
+                                v-if="props.order.depositAmount > 0"
+                                class="flex justify-between text-muted-foreground"
+                            >
+                                <span>Restante cobrado</span>
+                                <span class="tabular-nums">
+                                    {{ formatPrice(props.order.balanceAmount) }}
+                                </span>
+                            </div>
+                            <div
                                 class="flex justify-between border-t border-border pt-3 text-base font-semibold"
                             >
                                 <span>Total</span>
@@ -158,7 +177,7 @@ const addressParts = (address: ShippingAddressSnapshot): string =>
                                 class="flex items-center gap-2 pt-2 text-xs text-muted-foreground"
                             >
                                 <PackageCheck class="size-3.5" />
-                                Pago simulado · pedido confirmado
+                                Pago simulado · listo para preparación
                             </p>
                         </CardContent>
                     </Card>
