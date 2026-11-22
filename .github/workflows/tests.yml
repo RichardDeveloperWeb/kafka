@@ -13,6 +13,21 @@ jobs:
   ci:
     runs-on: ubuntu-latest
 
+    services:
+      pgsql:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: kafka
+          POSTGRES_USER: root
+          POSTGRES_PASSWORD: password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U root -d kafka"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -22,7 +37,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
         with:
-          php-version: '8.3'
+          php-version: '8.5'
           tools: composer:v2
           coverage: none
 
@@ -33,6 +48,11 @@ jobs:
 
       - name: Setup Application
         run: composer setup
+
+      - name: Prepare Testing Database
+        run: |
+          PGPASSWORD=password psql -h 127.0.0.1 -U root -d kafka -c 'CREATE DATABASE testing;'
+          DB_DATABASE=testing php artisan migrate --force
 
       - name: Run CI Checks
         run: composer ci:check
