@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
-import { ArrowRight, BookOpen, MapPin, Menu } from '@lucide/vue';
+import { Link, usePage } from '@inertiajs/vue3';
+import { BookOpen, MapPin, Menu, ShoppingCart, UserRound } from '@lucide/vue';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Sheet,
@@ -11,8 +12,11 @@ import {
     SheetTitle,
     SheetTrigger,
 } from '@/components/ui/sheet';
+import { index as cartIndex } from '@/actions/App/Http/Controllers/CartController';
 import { index as catalogIndex } from '@/actions/App/Http/Controllers/CatalogController';
-import { about, contact, home } from '@/routes';
+import { about, contact, dashboard, home, login, register } from '@/routes';
+
+const { auth, cartCount } = usePage().props;
 
 const navigation = [
     { label: 'Inicio', href: home() },
@@ -58,13 +62,35 @@ const navigation = [
                 </Link>
             </nav>
 
-            <div class="hidden md:block">
-                <Button as-child size="sm">
-                    <Link :href="catalogIndex()">
-                        Explorar catálogo
-                        <ArrowRight />
+            <div class="hidden items-center gap-2 md:flex">
+                <Button as-child size="sm" variant="ghost">
+                    <Link :href="cartIndex()" class="relative">
+                        <ShoppingCart />
+                        <span>Carrito</span>
+                        <Badge
+                            v-if="cartCount > 0"
+                            class="absolute -top-2 -right-2 flex size-5 items-center justify-center rounded-full p-0 text-[10px] tabular-nums"
+                        >
+                            {{ cartCount }}
+                        </Badge>
                     </Link>
                 </Button>
+                <template v-if="auth.user">
+                    <Button as-child size="sm">
+                        <Link :href="dashboard()">
+                            <UserRound />
+                            Mi cuenta
+                        </Link>
+                    </Button>
+                </template>
+                <template v-else>
+                    <Button as-child size="sm" variant="ghost">
+                        <Link :href="login()">Ingresar</Link>
+                    </Button>
+                    <Button as-child size="sm">
+                        <Link :href="register()">Crear cuenta</Link>
+                    </Button>
+                </template>
             </div>
 
             <Sheet>
@@ -103,6 +129,52 @@ const navigation = [
                             </Link>
                         </SheetClose>
                     </nav>
+                    <div
+                        class="mt-4 flex flex-col gap-1 border-t border-border pt-4"
+                    >
+                        <SheetClose as-child>
+                            <Link
+                                :href="cartIndex()"
+                                class="flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                            >
+                                <span>Carrito</span>
+                                <Badge
+                                    v-if="cartCount > 0"
+                                    class="tabular-nums"
+                                >
+                                    {{ cartCount }}
+                                </Badge>
+                            </Link>
+                        </SheetClose>
+                        <template v-if="auth.user">
+                            <SheetClose as-child>
+                                <Link
+                                    :href="dashboard()"
+                                    class="rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                                >
+                                    Mi cuenta
+                                </Link>
+                            </SheetClose>
+                        </template>
+                        <template v-else>
+                            <SheetClose as-child>
+                                <Link
+                                    :href="login()"
+                                    class="rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                                >
+                                    Ingresar
+                                </Link>
+                            </SheetClose>
+                            <SheetClose as-child>
+                                <Link
+                                    :href="register()"
+                                    class="rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                                >
+                                    Crear cuenta
+                                </Link>
+                            </SheetClose>
+                        </template>
+                    </div>
                     <div class="mt-6 px-3">
                         <SheetClose as-child>
                             <Button class="w-full" as-child>

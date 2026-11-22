@@ -1,18 +1,49 @@
 <script setup lang="ts">
-import { Head, Link } from '@inertiajs/vue3';
-import { ArrowLeft, ArrowRight, BookOpen, Check, MapPin } from '@lucide/vue';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import {
+    ArrowLeft,
+    ArrowRight,
+    BookOpen,
+    Check,
+    Lock,
+    MapPin,
+    ShoppingCart,
+    Ticket,
+} from '@lucide/vue';
+import InputError from '@/components/InputError.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import ProductCard from '@/components/public/ProductCard.vue';
+import { store as cartStore } from '@/actions/App/Http/Controllers/CartController';
 import { index as catalogIndex } from '@/actions/App/Http/Controllers/CatalogController';
-import { contact } from '@/routes';
+import { store as reservationStore } from '@/actions/App/Http/Controllers/ReservationController';
+import { contact, login } from '@/routes';
 import { formatPrice } from '@/lib/formatPrice';
 import type { CatalogProduct } from '@/types';
 
-defineProps<{
+const props = defineProps<{
     product: CatalogProduct;
     relatedProducts: CatalogProduct[];
 }>();
+
+const user = usePage().props.auth.user;
+const cartForm = useForm({ quantity: 1, product: '' });
+const reservationForm = useForm({ quantity: 1, product: '' });
+
+const addToCart = (): void => {
+    cartForm.post(cartStore(props.product.slug).url, {
+        preserveScroll: true,
+        onSuccess: () => cartForm.reset(),
+    });
+};
+
+const reserve = (): void => {
+    reservationForm.post(reservationStore(props.product.slug).url, {
+        preserveScroll: true,
+        onSuccess: () => reservationForm.reset(),
+    });
+};
 
 const metadata = (product: CatalogProduct) =>
     [
@@ -100,17 +131,123 @@ const metadata = (product: CatalogProduct) =>
                         {{ product.synopsis }}
                     </p>
 
-                    <div class="mt-8 flex flex-wrap gap-3">
-                        <Button as-child size="lg">
+                    <div v-if="user" class="mt-8 space-y-4">
+                        <div
+                            v-if="product.isAvailable"
+                            class="grid gap-4 rounded-2xl border border-border bg-card p-5 sm:grid-cols-2"
+                        >
+                            <form class="space-y-3" @submit.prevent="addToCart">
+                                <div class="grid gap-2">
+                                    <label
+                                        :for="`cart-quantity-${product.id}`"
+                                        class="text-xs font-medium tracking-wide uppercase"
+                                    >
+                                        Cantidad
+                                    </label>
+                                    <Input
+                                        :id="`cart-quantity-${product.id}`"
+                                        v-model.number="cartForm.quantity"
+                                        type="number"
+                                        min="1"
+                                        :max="Math.max(product.stock, 1)"
+                                    />
+                                    <InputError
+                                        :message="cartForm.errors.quantity"
+                                    />
+                                    <InputError
+                                        :message="cartForm.errors.product"
+                                    />
+                                </div>
+                                <Button
+                                    type="submit"
+                                    size="lg"
+                                    class="w-full"
+                                    :disabled="cartForm.processing"
+                                >
+                                    <ShoppingCart class="size-4" />
+                                    Agregar al carrito
+                                </Button>
+                            </form>
+
+                            <form class="space-y-3" @submit.prevent="reserve">
+                                <div class="grid gap-2">
+                                    <label
+                                        :for="`reservation-quantity-${product.id}`"
+                                        class="text-xs font-medium tracking-wide uppercase"
+                                    >
+                                        Apartar 15 minutos
+                                    </label>
+                                    <Input
+                                        :id="`reservation-quantity-${product.id}`"
+                                        v-model.number="
+                                            reservationForm.quantity
+                                        "
+                                        type="number"
+                                        min="1"
+                                        :max="Math.max(product.stock, 1)"
+                                    />
+                                    <InputError
+                                        :message="
+                                            reservationForm.errors.quantity
+                                        "
+                                    />
+                                    <InputError
+                                        :message="
+                                            reservationForm.errors.product
+                                        "
+                                    />
+                                </div>
+                                <Button
+                                    type="submit"
+                                    size="lg"
+                                    variant="outline"
+                                    class="w-full"
+                                    :disabled="reservationForm.processing"
+                                >
+                                    <Ticket class="size-4" />
+                                    Apartar producto
+                                </Button>
+                            </form>
+                        </div>
+
+                        <div class="flex flex-wrap gap-3">
+                            <Button as-child size="lg" variant="secondary">
+                                <Link :href="contact()">
+                                    Preguntar por este ejemplar
+                                    <ArrowRight />
+                                </Link>
+                            </Button>
+                            <Button as-child size="lg" variant="outline">
+                                <Link :href="catalogIndex()"
+                                    >Seguir explorando</Link
+                                >
+                            </Button>
+                        </div>
+                    </div>
+
+                    <div v-else class="mt-8 space-y-4">
+                        <div
+                            class="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-card p-5"
+                        >
+                            <Lock class="size-5 text-muted-foreground" />
+                            <p class="flex-1 text-sm text-muted-foreground">
+                                Inicia sesión para agregar productos al carrito,
+                                apartarlos o finalizar una compra.
+                            </p>
+                            <div class="flex gap-2">
+                                <Button as-child>
+                                    <Link :href="login()">Ingresar</Link>
+                                </Button>
+                                <Button as-child variant="outline">
+                                    <Link :href="catalogIndex()">Volver</Link>
+                                </Button>
+                            </div>
+                        </div>
+                        <Button as-child size="lg" variant="secondary">
                             <Link :href="contact()">
                                 Preguntar por este ejemplar
                                 <ArrowRight />
                             </Link>
-                        </Button>
-                        <Button as-child size="lg" variant="outline">
-                            <Link :href="catalogIndex()"
-                                >Seguir explorando</Link
-                            >
                         </Button>
                     </div>
 
