@@ -145,7 +145,7 @@ return [
     'features' => [
         Features::registration(),
         Features::resetPasswords(),
-        //Features::twoFactorAuthentication(),
+        // Features::twoFactorAuthentication(),
     ],
 
 ];
