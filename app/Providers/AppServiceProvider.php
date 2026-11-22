@@ -57,6 +57,8 @@ class AppServiceProvider extends ServiceProvider
     {
         Gate::before(fn (?User $user): ?bool => $user?->hasRole(UserRole::SuperAdmin->value) ? true : null);
 
-        Gate::define('access-admin-panel', fn (User $user): bool => $user->can(Permissions::ACCESS_ADMIN_PANEL));
+        foreach (Permissions::ALL as $permission) {
+            Gate::define($permission, fn (User $user): bool => $user->checkPermissionTo($permission));
+        }
     }
 }

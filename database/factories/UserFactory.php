@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\ManagerRole;
 use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -47,6 +48,13 @@ class UserFactory extends Factory
     }
 
     public function withRole(UserRole $role): static
+    {
+        return $this->afterCreating(function (User $user) use ($role): void {
+            $user->assignRole(Role::findOrCreate($role->value, 'web'));
+        });
+    }
+
+    public function withManagerRole(ManagerRole $role): static
     {
         return $this->afterCreating(function (User $user) use ($role): void {
             $user->assignRole(Role::findOrCreate($role->value, 'web'));
