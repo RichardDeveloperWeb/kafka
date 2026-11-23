@@ -12,22 +12,33 @@ test('catalog seeder creates categories and products', function () {
     $product = Product::query()->where('slug', 'cien-anos-de-soledad')->firstOrFail();
 
     expect(Category::count())->toBe(9)
-        ->and(Product::count())->toBe(10)
+        ->and(Product::count())->toBe(13)
         ->and($product->category->slug)->toBe('libros-fisicos')
         ->and($product->format)->toBe(ProductFormat::Printed)
         ->and((float) $product->price)->toBe(499.0)
         ->and($product->availability)->toBe(ProductAvailability::InStock);
 });
 
-test('catalog seeder marks one product as a preorder', function () {
+test('catalog seeder marks four products as preorders', function () {
     $this->seed(CatalogSeeder::class);
 
-    $preorder = Product::query()->where('slug', 'el-aleph')->firstOrFail();
+    $preorders = [
+        'el-aleph' => 100,
+        'los-libros-de-jacob' => 140,
+        'nuestra-parte-de-noche' => 160,
+        'la-biblioteca-de-la-media-noche' => 80,
+    ];
 
-    expect($preorder->availability)->toBe(ProductAvailability::OnDemand)
-        ->and((float) $preorder->deposit_amount)->toBe(100.0)
-        ->and($preorder->releases_at)->not->toBeNull()
-        ->and($preorder->isPreorder())->toBeTrue();
+    expect(Product::preorder()->count())->toBe(4);
+
+    foreach ($preorders as $slug => $deposit) {
+        $preorder = Product::query()->where('slug', $slug)->firstOrFail();
+
+        expect($preorder->availability)->toBe(ProductAvailability::OnDemand)
+            ->and((float) $preorder->deposit_amount)->toBe((float) $deposit)
+            ->and($preorder->releases_at)->not->toBeNull()
+            ->and($preorder->isPreorder())->toBeTrue();
+    }
 });
 
 test('catalog seeder is idempotent', function () {
@@ -35,7 +46,7 @@ test('catalog seeder is idempotent', function () {
     $this->seed(CatalogSeeder::class);
 
     expect(Category::count())->toBe(9)
-        ->and(Product::count())->toBe(10);
+        ->and(Product::count())->toBe(13);
 });
 
 test('catalog seeder marks digital and sold out products', function () {

@@ -24,7 +24,8 @@ test('catalog lists active products', function () {
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('catalog/Index')
-            ->has('products.data', 10)
+            ->has('products.data', 12)
+            ->where('products.total', 13)
             ->where('filters.category', '')
             ->where('filters.q', '')
             ->etc());
@@ -37,7 +38,7 @@ test('catalog can be filtered by category and search term', function () {
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('filters.category', 'libros-fisicos')
-            ->has('products.data', 2)
+            ->has('products.data', 4)
             ->etc());
 
     $this->get(route('catalog.index', ['q' => 'Kafka']))
@@ -62,7 +63,7 @@ test('catalog shows a product and related products', function () {
             ->where('product.price', 499)
             ->where('product.isPreorder', false)
             ->has('addresses', 0)
-            ->has('relatedProducts', 1)
+            ->has('relatedProducts', 3)
             ->etc());
 });
 

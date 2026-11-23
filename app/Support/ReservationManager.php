@@ -101,6 +101,16 @@ final class ReservationManager
     {
         abort_unless($reservation->user_id === $user->id, 404);
 
+        $this->cancelReservation($reservation);
+    }
+
+    public function cancelAsAdmin(Reservation $reservation): void
+    {
+        $this->cancelReservation($reservation);
+    }
+
+    private function cancelReservation(Reservation $reservation): void
+    {
         DB::transaction(function () use ($reservation): void {
             $locked = Reservation::query()->whereKey($reservation->id)->lockForUpdate()->firstOrFail();
             $releasesAt = $locked->getAttribute('releases_at');
