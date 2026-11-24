@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { BookOpen, MapPin, Menu, ShoppingCart, UserRound } from '@lucide/vue';
+import { MapPin, Menu, ShoppingCart, UserRound } from '@lucide/vue';
+import AppLogoIcon from '@/components/AppLogoIcon.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -34,11 +35,9 @@ const navigation = [
             class="mx-auto flex h-18 max-w-7xl items-center justify-between gap-6 px-4 sm:px-6 lg:px-8"
         >
             <Link :href="home()" class="group flex items-center gap-3">
-                <span
-                    class="flex size-10 items-center justify-center rounded-xl bg-foreground text-background transition-transform group-hover:-rotate-6"
-                >
-                    <BookOpen class="size-5" />
-                </span>
+                <AppLogoIcon
+                    class="size-10 rounded-xl transition-transform group-hover:-rotate-6"
+                />
                 <span class="flex flex-col leading-none">
                     <span
                         class="font-serif text-base font-semibold tracking-tight"

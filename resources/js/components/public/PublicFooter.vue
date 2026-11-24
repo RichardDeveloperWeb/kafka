@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { BookOpen, MapPin } from '@lucide/vue';
+import { MapPin } from '@lucide/vue';
+import AppLogoIcon from '@/components/AppLogoIcon.vue';
 import { Button } from '@/components/ui/button';
 import { index as catalogIndex } from '@/actions/App/Http/Controllers/CatalogController';
 import {
@@ -42,11 +43,7 @@ const legal = [
         >
             <div class="space-y-4">
                 <div class="flex items-center gap-3">
-                    <span
-                        class="flex size-9 items-center justify-center rounded-lg bg-foreground text-background"
-                    >
-                        <BookOpen class="size-4" />
-                    </span>
+                    <AppLogoIcon class="size-9 rounded-lg" />
                     <span class="font-serif text-base font-semibold">{{
                         site.name
                     }}</span>

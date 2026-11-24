@@ -97,7 +97,8 @@ const rightNavItems: NavItem[] = [
                             >
                             <SheetHeader class="flex justify-start text-left">
                                 <AppLogoIcon
-                                    class="size-6 fill-current text-black dark:text-white"
+                                    class="size-6"
+                                    alt="Los Cuentos de Kafka"
                                 />
                             </SheetHeader>
                             <div
