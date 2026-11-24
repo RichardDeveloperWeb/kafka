@@ -3,7 +3,15 @@ import { Link, usePage } from '@inertiajs/vue3';
 import { BookOpen, MapPin } from '@lucide/vue';
 import { Button } from '@/components/ui/button';
 import { index as catalogIndex } from '@/actions/App/Http/Controllers/CatalogController';
-import { about, contact, cookies, home, privacy, terms } from '@/routes';
+import {
+    about,
+    clientMaps,
+    contact,
+    cookies,
+    home,
+    privacy,
+    terms,
+} from '@/routes';
 import type { SiteInfo } from '@/types';
 
 defineEmits<{
@@ -23,6 +31,7 @@ const legal = [
     { label: 'Aviso de privacidad', href: privacy() },
     { label: 'Términos y condiciones', href: terms() },
     { label: 'Política de cookies', href: cookies() },
+    { label: 'Mapas del área de cliente', href: clientMaps() },
 ];
 </script>
 

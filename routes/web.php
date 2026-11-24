@@ -18,6 +18,7 @@ Route::inertia('nosotros', 'public/About')->name('about');
 Route::inertia('aviso-de-privacidad', 'public/Privacy')->name('privacy');
 Route::inertia('terminos-y-condiciones', 'public/Terms')->name('terms');
 Route::inertia('politica-de-cookies', 'public/Cookies')->name('cookies');
+Route::inertia('mapas-del-area-de-cliente', 'public/ClientMaps')->name('clientMaps');
 
 Route::get('contacto', [ContactController::class, 'create'])->name('contact');
 Route::post('contacto', [ContactController::class, 'store'])->name('contact.store');

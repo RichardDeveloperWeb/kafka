@@ -85,6 +85,7 @@ test('static public pages render', function (string $routeName, string $componen
     'privacy' => ['privacy', 'public/Privacy'],
     'terms' => ['terms', 'public/Terms'],
     'cookies' => ['cookies', 'public/Cookies'],
+    'clientMaps' => ['clientMaps', 'public/ClientMaps'],
 ]);
 
 test('contact request requires consent and privacy acceptance', function () {
